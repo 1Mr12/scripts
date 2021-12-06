@@ -11,17 +11,21 @@ class Video():
         self.startCutting = startCutting
         self.endCutting = endCutting
         self.extension = self.inputVideoName[self.inputVideoName.rfind("."):]
-        self.outVideoName = outVideoName if outVideoName.endwith((".mp4",".webm",".mkv",".wmv")) else outVideoName + self.extension
+        self.outVideoName = outVideoName if outVideoName.endswith((".mp4",".webm",".mkv",".wmv")) else outVideoName + self.extension
 
     # Trim Video from [x] to [y] Then save the output
     def trimVideo(self):
-        if self.inputVideoName and self.startcutting and self.endCutting:
+        if self.inputVideoName and self.startCutting and self.endCutting:
+            # check first if start and end is will formated
             command = self.cutCommand.format(inputVideoName=self.inputVideoName, startCutting=self.startCutting, endCutting=self.endCutting, outVideoName=self.outVideoName)
             try:
                 cutOutput = subprocess.run(command,capture_output=True,shell=True)
-                return True
+                if not cutOutput.returncode:
+                    return True
+                else:
+                    return False
             except:
-                return False # error during running the command
+                print("Error while Cutting Video") # error during running the command
 
     # Delete Part From a video        
     def trimPartFromVideo(self):
@@ -33,4 +37,6 @@ if __name__ == '__main__':
     if len(argv) < 3:
         print(help)
     else:
-        pass
+        videoName, start ,end = argv[1], argv[2], argv[3]
+        newVideo = Video(inputVideoName=videoName, startCutting=start, endCutting=end)
+        newVideo.trimVideo()

@@ -18,6 +18,7 @@ class Video():
         self.inputVideoFile = None
 
     # check if the time format is like 00:00:00
+    # refactor this to multi function validate 
     def validateTimeFormat(self):
         if (len(self.startCutting),len(self.endCutting)) == (8,8) : # length Must be 8 
             if ( self.startCutting[2], self.endCutting[2] ,self.startCutting[5] , self.endCutting[5] ) == (':',':',':',':') : # Must have : separator 

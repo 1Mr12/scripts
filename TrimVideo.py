@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 
+from _typeshed import Self
 from uuid import uuid4
 from sys import argv
 import subprocess
@@ -16,6 +17,21 @@ class Video():
         self.outVideoName = outVideoName if outVideoName.endswith((".mp4",".webm",".mkv",".wmv")) else outVideoName + self.extension
         self.inputVideoFile = None
 
+    # check if the time format is like 00:00:00
+    def validateTimeFormat(self):
+        if (len(self.startCutting),len(self.endCutting)) == (8,8) : # length Must be 8 
+            if ( self.startCutting[2], self.endCutting[2] ,self.startCutting[5] , self.endCutting[5] ) == (':',':',':',':') : # Must have : separator 
+                allInput = self.startCutting.replace(":","") + self.endCutting.replace(":","") # remove : to check if all is digits
+                checkAllisDigit = list(map(lambda x: x.isdigit(), allInput)) # make array T or F for every value
+                if False in checkAllisDigit:
+                    return False
+                else:
+                    return True
+            else:
+                return False
+        else:
+            return False
+    
     # Trim Video from [x] to [y] Then save the output
     def trimVideo(self):
         if self.inputVideoName and self.startCutting and self.endCutting:

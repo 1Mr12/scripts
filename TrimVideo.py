@@ -1,8 +1,11 @@
 #!/usr/bin/env python
 
-from uuid import uuid4
-from sys import argv
-import subprocess
+try:
+	from uuid import uuid4
+	from sys import argv
+	import subprocess
+except:
+	print("Install these: [sys , subprocess , uuid] , ffmpeg ")
 
 class Video():
 	cutCommand = "ffmpeg -i {inputVideoName} -ss {startCutting} -to {endCutting} -map 0 -c copy {outVideoName}"
@@ -18,7 +21,7 @@ class Video():
 		self.inputVideoFile = None
 
 	# check if the time format is like 00:00:00
-	# refactor this to multi function validate
+	# refactor this to multi function validate or Regx 
 	def validateTimeFormat(self):
 		if (len(self.startCutting),len(self.endCutting)) == (8,8) : # length Must be 8 
 			if ( self.startCutting[2], self.endCutting[2] ,self.startCutting[5] , self.endCutting[5] ) == (':',':',':',':') : # Must have : separator 
@@ -37,19 +40,23 @@ class Video():
 	def trimVideo(self):
 		if self.inputVideoName and self.startCutting and self.endCutting:
 			# check first if start and end is will formated
-			command = self.cutCommand.format(inputVideoName=self.inputVideoName, startCutting=self.startCutting, endCutting=self.endCutting, outVideoName=str(uuid4().hex[:4])+"."+self.outVideoName)
-			try:
-				cutOutput = subprocess.run(command,capture_output=True,shell=True)
-				if not cutOutput.returncode:
-					return True
-				else:
-					return False
-			except:
-				print("Error while Cutting Video") # error during running the command
-
+			if self.validateTimeFormat():
+				command = self.cutCommand.format(inputVideoName=self.inputVideoName, startCutting=self.startCutting, endCutting=self.endCutting, outVideoName=str(uuid4().hex[:4])+"."+self.outVideoName)
+				try:
+					cutOutput = subprocess.run(command,capture_output=True,shell=True)
+					if not cutOutput.returncode:
+						return True
+					else:
+						return False
+				except:
+					print("Error while Cutting Video") # error during running the command
+			else:
+				print("Bad Time Format [00H:00M:00S]")
+				return False
+	
 	# create file contains file 'firstCut.mp4'\nfile 'secondCut.mp4'
 	def createInputVideosNames(self):
-		InputVideosNames = subprocess.run("ls -t *out.???",capture_output=True,shell=True)
+		InputVideosNames = subprocess.run("ls -t *out.???",capture_output=True,shell=True) # sort files based on time 
 		if InputVideosNames.returncode == 0:
 			inputVideoNames = InputVideosNames.stdout.decode("utf-8").strip().split("\n")
 			inputVideoNames.reverse()
@@ -59,7 +66,7 @@ class Video():
 				outNames.write("file "+"'{0}'".format(videoName)+'\n')
 			else:
 				outNames.close()
-				self.inputVideoFile = "input.txt"
+				self.inputVideoFile = "input.txt" 
 				return True
 		else:
 			return False # No Out*
@@ -71,8 +78,6 @@ class Video():
 			MergeCommand = self.mergeCommand.format(inputVideosNames=self.inputVideoFile, outVideoName='{0}.'.format(self.inputVideoName)+'FamilyFriendly'+self.extension)
 			try:
 				MergOutput = subprocess.run(MergeCommand,capture_output=True,shell=True)
-				print(MergOutput.returncode)
-				print(MergOutput.stdout.decode("utf-8"))
 				if not MergOutput.returncode:
 					return True
 				else:
@@ -82,63 +87,66 @@ class Video():
 		else:
 			print("No Input File")
 
+	# find the full duration of the video - Last second
 	def endDuraction(self):
 		EndOfVideo = subprocess.run(self.DuractionCommand.format(inputVideoName=self.inputVideoName),capture_output=True,shell=True).stdout.decode("utf-8").strip()
 		EndOfVideo = EndOfVideo[:EndOfVideo.rfind(".")]
 		return EndOfVideo
 
-	# Generate Parst withou Bad ones
-	def cutPart(self):
-		BadParts = [self.startCutting , self.endCutting]
-		try:
-			self.startCutting, self.endCutting = '00:00:00', BadParts[0]
-			r1 = self.trimVideo()
-			self.startCutting, self.endCutting = BadParts[1], self.endDuraction()
-			r2 = self.trimVideo()
-			return True
-		except:
-			print("Exception")
-			return False
-
-	def cutParts(self, ListOfBadParts ):
-		firstMinute = "00:00:00"
-		for (index, (start, end)) in enumerate(ListOfBadParts):
-			if index+1 < len(ListOfBadParts):
-				print(firstMinute, start)
-				self.startCutting , self.endCutting = firstMinute, start
-				r = self.trimVideo()
-				print(r)
-				next = ListOfBadParts[index+1][0]
-				print(end,"To",next)
-				self.startCutting , self.endCutting = end, next
-				r = self.trimVideo()
-				print(r)
-				firstMinute = next
+	# Generate Parts without Bad ones
+	def cutPart(self, ListOfBadParts=None):
+		if ListOfBadParts: # if it list of bad parts
+			firstMinute = "00:00:00"
+			for (index, (start, end)) in enumerate(ListOfBadParts):
+				if index+1 < len(ListOfBadParts):
+					print(firstMinute,"To", start,end=" > ")
+					self.startCutting , self.endCutting = firstMinute, start
+					r = self.trimVideo()
+					print(r)
+					next = ListOfBadParts[index+1][0] # Find the next element startCutting
+					print(,end,"To",next,end=" > ")
+					self.startCutting , self.endCutting = end, next
+					r = self.trimVideo()
+					print(r)
+					firstMinute = next
+				else:
+					endTime = self.endDuraction() # find the the last minute
+					next = ListOfBadParts[-1][1] # last cut 
+					print(next,"To", endTime, end=" > ")
+					self.startCutting , self.endCutting = next, endTime
+					r = self.trimVideo()
+					print(r)
 			else:
-				endTime = self.endDuraction()
-				next = ListOfBadParts[-1][1]
-				print(next,"To", endTime)
-				self.startCutting , self.endCutting = next, endTime
-				self.trimVideo()
-		else:
-			return True
+				return True # after finish the loop
+		else: # single part to cut
+			BadParts = [self.startCutting , self.endCutting]
+			try:
+				self.startCutting, self.endCutting = '00:00:00', BadParts[0]
+				r1 = self.trimVideo()
+				self.startCutting, self.endCutting = BadParts[1], self.endDuraction()
+				r2 = self.trimVideo()
+				return True
+			except:
+				print("Exception")
+				return False
 			
 
-	def deletePart(self):
-		r = self.cutPart()
-		self.createInputVideosNames()
-		x = self.mergeAll()
-	
-	def deleteParts(self, ListOfBadParts):
-		GoodParts = self.cutParts(ListOfBadParts)
-		if GoodParts:
+	def deletePart(self, ListOfBadParts ):
+		if ListOfBadParts: # list of bad to cut
+			GoodParts = self.cutPart(ListOfBadParts=ListOfBadParts) # generate good parts
+			if GoodParts:
+				self.createInputVideosNames()
+				merged = self.mergeAll() # merge all good
+				return merged
+		else: # if single cut 
+			r = self.cutPart()
 			self.createInputVideosNames()
-			merged = self.mergeAll()
-			return merged
-
+			x = self.mergeAll()
+		
 
 	def clean(self):
 		cleaningResult = subprocess.run("rm input.txt *out.??? ",capture_output=True,shell=True)
+		return cleaningResult
 
 if __name__ == '__main__':
 	help = "\n-i [ input File Name ]\n-start [ Houar:Minute:Second ]\n-end [ Houar:Minute:Second ]\n-o [ output File Name ]"
@@ -149,6 +157,6 @@ if __name__ == '__main__':
 		videoName = argv[1]
 		BadParts = [["00:04:00","00:06:00"],["00:15:00","00:18:00"]]
 		newVideo = Video(inputVideoName=videoName)
-		result = newVideo.deleteParts(ListOfBadParts=BadParts)
+		result = newVideo.deletePart(ListOfBadParts=BadParts)
 		print("Deleting Temp Files")
 		newVideo.clean()

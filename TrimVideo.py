@@ -108,15 +108,17 @@ class Video():
 				self.startCutting , self.endCutting = firstMinute, start
 				r = self.trimVideo()
 				print(r)
-				print(end,"To",ListOfBadParts[index+1][0])
-				self.startCutting , self.endCutting = end, ListOfBadParts[index+1][0]
+				next = ListOfBadParts[index+1][0]
+				print(end,"To",next)
+				self.startCutting , self.endCutting = end, next
 				r = self.trimVideo()
 				print(r)
-				firstMinute = end
+				firstMinute = next
 			else:
 				endTime = self.endDuraction()
-				print(firstMinute,"To", endTime)
-				self.startCutting , self.endCutting = firstMinute, endTime
+				next = ListOfBadParts[-1][1]
+				print(next,"To", endTime)
+				self.startCutting , self.endCutting = next, endTime
 				self.trimVideo()
 		else:
 			return True
@@ -145,7 +147,7 @@ if __name__ == '__main__':
 	else:
 		#videoName, start ,end = argv[1], argv[2], argv[3]
 		videoName = argv[1]
-		BadParts = [["00:00:05","00:00:15"],["00:00:30","00:00:60"]]
+		BadParts = [["00:04:00","00:06:00"],["00:15:00","00:18:00"]]
 		newVideo = Video(inputVideoName=videoName)
 		result = newVideo.deleteParts(ListOfBadParts=BadParts)
 		print("Deleting Temp Files")

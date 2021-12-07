@@ -104,7 +104,7 @@ class Video():
 					r = self.trimVideo()
 					print(r)
 					next = ListOfBadParts[index+1][0] # Find the next element startCutting
-					print(,end,"To",next,end=" > ")
+					print(end,"To",next,end=" > ")
 					self.startCutting , self.endCutting = end, next
 					r = self.trimVideo()
 					print(r)

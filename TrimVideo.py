@@ -160,3 +160,4 @@ if __name__ == '__main__':
 		result = newVideo.deletePart(ListOfBadParts=BadParts)
 		print("Deleting Temp Files")
 		newVideo.clean()
+		# we will edit this to make a nudity algoritm detections

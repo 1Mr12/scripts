@@ -4,6 +4,7 @@ try:
 	import cv2
 	import subprocess
 	from nudenet import NudeClassifierLite
+	from sys import argv
 except:
 	print("You have to install openCv subprocess nudenet - pip3 install opencv-python nudenet ")
 	exit()
@@ -14,7 +15,7 @@ class Video2Frames:
 	command = "ffmpeg -i {path} -vcodec copy -f rawvideo -y /dev/null 2>&1 | tr ^M '\n' | awk '/^frame=/ {print $2}'|tail -n 1"
 	
 	def __init__(self, videoPath=None) -> None:
-		self.videoPath = videoPath
+		self.VideoPath = videoPath
 
 	def findFramesNumber(self):
 		numberOfFrames = subprocess.run(self.command.format(path=self.videoPath),capture_output=True,shell=True).stdout.decode("utf-8").strip()
@@ -22,20 +23,27 @@ class Video2Frames:
 
 	def extractFrames(self):
 		# Opens the Video file
-		videoFile = cv2.VideoCapture(self.videoPath)
+		videoFile = cv2.VideoCapture(self.VideoPath)
+		print("Done Reading ",self.VideoPath)
 		counter=0
-        
+		try:
+			subprocess.run("mkdir Frames")
+		except:
+			print("Found Frames Foldar")
+
 		while(videoFile.isOpened()):
 			ret, frame = videoFile.read()
 			if ret == False:
 				break
 			cv2.imwrite('Frames/Frame-'+str(counter)+'.jpg',frame)
+			print("\b"*2,end=' ')
+			print(counter)
 			counter+=1
 		videoFile.release()
+		print("Done")
 
 
-
-class FamilyFriendly():
+class FamilyFriendly(Video2Frames):
 	
 	def __init__(self, videoPath=None) -> None:
 		self.BadFrames = []
@@ -57,14 +65,17 @@ class FamilyFriendly():
 
 	def Good(self, frame):
 		VisonResult = self.vision(frame)
-		#print(VisonResult["safe"],VisonResult["unsafe"])
-		if VisonResult["safe"] > 0.5 :
+		if VisonResult["unsafe"] > .75 :
+			print(VisonResult["unsafe"], "UnSafe")
+			return False
+		else:
+			print(VisonResult["safe"] , "Safe")
 			return True
 
 	def processFrame(self,frame,counter):
 		if self.Good(frame):
 			self.writeFrame(frame)
-			print(counter)
+			print("Writing Frame Number: ",counter)
 		else:
 			print("Delete Frame number",counter)
 			cv2.imwrite('tmp/Frame-'+str(counter)+'.jpg',frame)
@@ -88,29 +99,18 @@ class FamilyFriendly():
 
 
 
-'''
-
-# initialize classifier (downloads the checkpoint file automatically the first time)
-classifier_lite = NudeClassifierLite()
-
-# Classify video
-# Returns {"metadata": {"fps": FPS, "video_length": TOTAL_N_FRAMES, "video_path": 'path_to_video'},
-#          "preds": {frame_i: {'safe': PROBABILITY, 'unsafe': PROBABILITY}, ....}}
 
 
-
-
-# Classify single image
-classifier_lite.classify('path_to_image_1')
-# Returns {'path_to_image_1': {'safe': PROBABILITY, 'unsafe': PROBABILITY}}
-# Classify multiple images (batch prediction)
-# batch_size is optional; defaults to 4
-classifier_lite.classify(['path_to_image_1', 'path_to_image_2'])
-# Returns {'path_to_image_1': {'safe': PROBABILITY, 'unsafe': PROBABILITY},
-#          'path_to_image_2': {'safe': PROBABILITY, 'unsafe': PROBABILITY}}
-
-
-print(result)
-
-
-'''
+if __name__=='__main__':
+	path,option = argv[1],argv[2]
+	if path and option == "1" :
+		video = FamilyFriendly(videoPath=path)
+		video.deleteBadFrames()
+	elif path and option == "2":
+		video = FamilyFriendly(videoPath=path)
+		video.extractFrames()
+		x = subprocess.run("find Frames/*",capture_output=True,shell=True).stdout.decode("utf-8").strip()
+		x = x.split()
+		classifier_lite = NudeClassifierLite()
+		xresult = classifier_lite.classify(x)
+		print(xresult)
